@@ -172,24 +172,22 @@ public class Model implements Serializable {
         List<int[]> possibleMoves = new ArrayList<>();
 
         List<Integer> positionsToCheck = new ArrayList<>();
-        positionsToCheck.addAll(getBlackQueenPositions());
-        positionsToCheck.addAll(getWhiteQueenPositions());
+        if(playerColor == Constants.BLACK)
+            positionsToCheck.addAll(getBlackQueenPositions());
+        else
+            positionsToCheck.addAll(getWhiteQueenPositions());
 
         for (int position : positionsToCheck) {
-            int piece = getPiece(position);
 
-            // Check if the piece is a queen of the current player's color
-            if (piece == playerColor) {
-                // Generate possible moves for this queen
-                List<Integer> queenMoves = generatePossibleMovements(position);
-                for (int move : queenMoves) {
-                    // For each move, generate possible wall placements
-                    List<Integer> possibleWallPlacements = generatePossibleMovements(move);
-                    for (int wallPos : possibleWallPlacements) {
-                            possibleMoves.add(new int[]{position, move, wallPos});
-                    }
+            List<Integer> queenMoves = generatePossibleMovements(position);
+            for (int move : queenMoves) {
+                // For each move, generate possible wall placements
+                List<Integer> possibleWallPlacements = generatePossibleMovements(move);
+                for (int wallPos : possibleWallPlacements) {
+                        possibleMoves.add(new int[]{position, move, wallPos});
                 }
             }
+
         }
 
         return possibleMoves;

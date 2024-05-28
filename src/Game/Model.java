@@ -1,5 +1,7 @@
 package Game;
 
+import Game.AI.MagicBitboards;
+
 import java.io.Serializable;
 import java.util.*;
 
@@ -8,9 +10,9 @@ public class Model implements Serializable {
     private final List<Observer> observers;
     public static final int BOARD_SIZE = 8;
 
-    private Set<Integer> blackQueenPositions;
-    private Set<Integer> wallPositions;
-    private Set<Integer> whiteQueenPositions;
+
+    private final int[] blackQueenPositions;
+    private final int[] whiteQueenPositions;
 
     // Bitboards to represent the queens
     private long whiteQueens;
@@ -18,12 +20,14 @@ public class Model implements Serializable {
     private long walls;
     private int currentPlayer = Constants.WHITE;
 
+    private final MagicBitboards magicBitboards;
 
     public Model() {
         this.observers = new ArrayList<>();
-        whiteQueenPositions = new HashSet<>();
-        blackQueenPositions = new HashSet<>();
-        wallPositions = new HashSet<>();
+        magicBitboards = new MagicBitboards();
+
+        blackQueenPositions = new int[3];
+        whiteQueenPositions = new int[3];
         initializeQueens();
     }
 
@@ -32,17 +36,16 @@ public class Model implements Serializable {
         // Example positions for queens
         // Let's say the white queens are at A1, D4, and H8
         whiteQueens = (1L << 3) | (1L << 27) | (1L << 63);
-        whiteQueenPositions.add(3);
-        whiteQueenPositions.add(27);
-        whiteQueenPositions.add(63);
+        whiteQueenPositions[0] = 3;
+        whiteQueenPositions[1] = 27;
+        whiteQueenPositions[2] = 63;
 
 
         // And the black queens are at B2, E5, and G7
         blackQueens = (1L << 9) | (1L << 36) | (1L << 54);
-        blackQueenPositions.add(9);
-        blackQueenPositions.add(36);
-        blackQueenPositions.add(54);
-
+        blackQueenPositions[0] = 9;
+        blackQueenPositions[1] = 36;
+        blackQueenPositions[2] = 54;
 
 
     }
@@ -63,8 +66,30 @@ public class Model implements Serializable {
         return ((walls | blackQueens | whiteQueens) & (1L << position)) == 0;
     }
 
+    public long getOccupancy(){
+        return walls | blackQueens | whiteQueens;
+    }
+
+
+    public boolean hasMoves(int[] positions){
+        for(int queenPosition : positions) {
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (i == 0 && j == 0) continue; // Skip the queen's own position
+
+                    if (isWalkable(queenPosition + i * BOARD_SIZE + j)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean isGameOver(){
-        return generatePossibleMoves(currentPlayer).isEmpty();
+        boolean hasMovesBlack = hasMoves(blackQueenPositions);
+        boolean hasMovesWhite = hasMoves(whiteQueenPositions);
+        return !hasMovesBlack && !hasMovesWhite;
     }
 
     public int getCurrentPlayer() {
@@ -75,20 +100,28 @@ public class Model implements Serializable {
         if (isWhiteQueen(oldPosition)) {
             whiteQueens &= ~(1L << oldPosition); // Remove from old position
             whiteQueens |= (1L << newPosition); // Add to new position
-            whiteQueenPositions.remove(oldPosition);
-            whiteQueenPositions.add(newPosition);
+            updateQueenPosition(whiteQueenPositions, oldPosition, newPosition);
+
         } else if (isBlackQueen(oldPosition)) {
             blackQueens &= ~(1L << oldPosition); // Remove from old position
             blackQueens |= (1L << newPosition); // Add to new position
-            blackQueenPositions.remove(oldPosition);
-            blackQueenPositions.add(newPosition);
+            updateQueenPosition(blackQueenPositions, oldPosition, newPosition);
+
         }
         notifyObservers();
     }
 
+    private void updateQueenPosition(int[] positions, int oldPosition, int newPosition) {
+        for (int i = 0; i < 3; i++) {
+            if (positions[i] == oldPosition) {
+                positions[i] = newPosition;
+                break;
+            }
+        }
+    }
+
     public void placeWall(int position) {
         walls |= (1L << position);
-        wallPositions.add(position);
         currentPlayer = currentPlayer == Constants.WHITE ? Constants.BLACK : Constants.WHITE;
 
         notifyObservers();
@@ -104,26 +137,9 @@ public class Model implements Serializable {
 
     public void unPlaceWall(int position){
         walls &= ~(1L << position);
-        wallPositions.remove(position);
         currentPlayer = currentPlayer == Constants.WHITE ? Constants.BLACK : Constants.WHITE;
 
         notifyObservers();
-    }
-
-    public void printBoard() {
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                int position = row * BOARD_SIZE + col;
-                if ((whiteQueens & (1L << position)) != 0) {
-                    System.out.print("W ");
-                } else if ((blackQueens & (1L << position)) != 0) {
-                    System.out.print("B ");
-                } else {
-                    System.out.print(". ");
-                }
-            }
-            System.out.println();
-        }
     }
 
 
@@ -168,62 +184,42 @@ public class Model implements Serializable {
         return false;
     }
 
-    public List<int[]> generatePossibleMoves(int playerColor) {
-        List<int[]> possibleMoves = new ArrayList<>();
 
-        List<Integer> positionsToCheck = new ArrayList<>();
-        if(playerColor == Constants.BLACK)
-            positionsToCheck.addAll(getBlackQueenPositions());
-        else
-            positionsToCheck.addAll(getWhiteQueenPositions());
+    public int[][] generatePossibleMoves(int playerColor) {
+        int[][] possibleMovesList = new int[64*64][3];
 
-        for (int position : positionsToCheck) {
+        int[] queensPositions = playerColor == Constants.WHITE ? whiteQueenPositions : blackQueenPositions;
+        long occupancy = getOccupancy();
 
-            List<Integer> queenMoves = generatePossibleMovements(position);
-            for (int move : queenMoves) {
-                // For each move, generate possible wall placements
-                List<Integer> possibleWallPlacements = generatePossibleMovements(move);
-                for (int wallPos : possibleWallPlacements) {
-                        possibleMoves.add(new int[]{position, move, wallPos});
+        int k = 0;
+
+        for (int position : queensPositions) {
+            long queenMoves = magicBitboards.generateQueenMoves(position, occupancy);
+            for (int to = 0; to < 64; to++) {
+                if ((queenMoves & (1L << to)) != 0) {
+
+                    long newOccupancy = (occupancy & ~(1L << position)) | (1L << to);
+
+                    long wallMoves = magicBitboards.generateQueenMoves(to, newOccupancy);
+                        for (int wall = 0; wall < 64; wall++) {
+                            if ((wallMoves & (1L << wall)) != 0) {
+                                possibleMovesList[k++] = new int[]{position, to, wall};
+                            }
+                        }
+                    }
                 }
             }
-
-        }
-
-        return possibleMoves;
+        return Arrays.copyOfRange(possibleMovesList, 0, k);
     }
 
-    private List<Integer> generatePossibleMovements(int startPosition) {
-        List<Integer> moves = new ArrayList<>();
-
-        // Extract row and column indices
-
-        for (int directionIndex = 0; directionIndex < BOARD_SIZE; directionIndex++) {
-            for (int n = 0; n < 8; n++) {
-                if(!isValidPosition(directionIndex, n)) continue;
-                int position =  startPosition + Constants.directionOffsets[directionIndex] * (n + 1);
-                if(isWalkable(position))
-                    moves.add(position);
-                else
-                    break;
-            }
-        }
 
 
-
-        return moves;
-    }
-
-    public Set<Integer> getWhiteQueenPositions() {
+    public int[] getWhiteQueenPositions() {
         return whiteQueenPositions;
     }
 
-    public Set<Integer> getBlackQueenPositions() {
+    public int[] getBlackQueenPositions() {
         return blackQueenPositions;
-    }
-
-    public Set<Integer> getWallPositions() {
-        return wallPositions;
     }
 
     public void addObserver(Observer observer) {
@@ -242,6 +238,21 @@ public class Model implements Serializable {
         observers.addAll(newObservers);
     }
 
+    private void printBoard() {
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                int position = row * BOARD_SIZE + col;
+                if ((whiteQueens & (1L << position)) != 0) {
+                    System.out.print("W ");
+                } else if ((blackQueens & (1L << position)) != 0) {
+                    System.out.print("B ");
+                } else {
+                    System.out.print(". ");
+                }
+            }
+            System.out.println();
+        }
+    }
 
     public void notifyObservers(){
         if(observers.isEmpty()) return;
@@ -253,49 +264,8 @@ public class Model implements Serializable {
             for (Observer observer : observers)
                 observer.onGameOver();
         }
+
     }
 
-    public static boolean isValidPosition(int row, int col) {
-        return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
-    }
 
-    public long getWhiteQueens() {
-        return whiteQueens;
-    }
-
-    public void setWhiteQueens(long whiteQueens) {
-        this.whiteQueens = whiteQueens;
-    }
-
-    public long getBlackQueens() {
-        return blackQueens;
-    }
-
-    public void setBlackQueens(long blackQueens) {
-        this.blackQueens = blackQueens;
-    }
-
-    public long getWalls() {
-        return walls;
-    }
-
-    public void setWalls(long walls) {
-        this.walls = walls;
-    }
-
-    public void setCurrentPlayer(int currentPlayer) {
-        this.currentPlayer = currentPlayer;
-    }
-
-    public void setBlackQueenPositions(Set<Integer> blackQueenPositions) {
-        this.blackQueenPositions = blackQueenPositions;
-    }
-
-    public void setWallPositions(Set<Integer> wallPositions) {
-        this.wallPositions = wallPositions;
-    }
-
-    public void setWhiteQueenPositions(Set<Integer> whiteQueenPositions) {
-        this.whiteQueenPositions = whiteQueenPositions;
-    }
 }

@@ -5,7 +5,6 @@ import Game.Model;
 import Game.Observer;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import static Game.Constants.BOARD_SIZE;
@@ -33,8 +32,7 @@ public class Minimax {
         int bestScore = Integer.MIN_VALUE;
         int[] bestMovePos = null;
 
-        List<int[]> moves = model.generatePossibleMoves(Constants.BLACK);
-        orderMoves(moves, model);
+        int[][] moves = model.generatePossibleMoves(Constants.BLACK);
 
         for (int[] move : moves) {
             model.movePiece(move[0], move[1]);
@@ -60,51 +58,51 @@ public class Minimax {
             return evaluation(model);
         }
 
+
         if (isMaximizing) {
             int bestScore = Integer.MIN_VALUE;
-            List<int[]> moves = model.generatePossibleMoves(Constants.BLACK);
-            orderMoves(moves, model);
+            int[][] moves = model.generatePossibleMoves(Constants.BLACK);
             for (int[] move : moves) {
-
                 counter++;
+
 
                 model.movePiece(move[0], move[1]);
                 model.placeWall(move[2]);
 
-                int score = minimaxScore(model, depth - 1, alpha, beta, false);
+                bestScore = Math.max(bestScore, minimaxScore(model, depth - 1, alpha, beta, false));
 
                 model.unPlaceWall(move[2]);
                 model.movePiece(move[1], move[0]);
 
-                bestScore = Math.max(bestScore, score);
-                alpha = Math.max(alpha, score);
-                if(bestScore >= beta)
+                if(bestScore >= beta) {
                     break;
+                }
+                alpha = Math.max(alpha, bestScore);
 
 
             }
             return bestScore;
         } else {
             int bestScore = Integer.MAX_VALUE;
-            List<int[]> moves = model.generatePossibleMoves(Constants.WHITE);
-            orderMoves(moves, model);
-
+            int[][] moves = model.generatePossibleMoves(Constants.WHITE);
             for (int[] move : moves) {
 
                 counter++;
 
+
                 model.movePiece(move[0], move[1]);
                 model.placeWall(move[2]);
 
-                int score = minimaxScore(model, depth - 1, alpha, beta, true);
+                bestScore = Math.min(bestScore, minimaxScore(model, depth - 1, alpha, beta, true));
 
                 model.unPlaceWall(move[2]);
                 model.movePiece(move[1], move[0]);
 
-                bestScore = Math.min(bestScore, score);
-                beta = Math.min(beta, score);
-                if(bestScore <= alpha)
+
+                if(bestScore <= alpha) {
                     break;
+                }
+                beta = Math.min(beta, bestScore);
             }
             return bestScore;
         }
@@ -117,20 +115,19 @@ public class Minimax {
             return model.getCurrentPlayer() == Constants.WHITE ? Integer.MIN_VALUE : Integer.MAX_VALUE;
         }
 
-
         int positionEvaluation = 0;
         for(int whiteQueenPosition : model.getWhiteQueenPositions()){
-            positionEvaluation -= evaluateQueenPosition(model, whiteQueenPosition);
+            positionEvaluation -= getQueenOptionsAmount(model, whiteQueenPosition);
         }
 
         for(int blackQueenPosition : model.getBlackQueenPositions()){
-            positionEvaluation += evaluateQueenPosition(model, blackQueenPosition);
+            positionEvaluation += getQueenOptionsAmount(model, blackQueenPosition);
         }
 
         return positionEvaluation;
     }
 
-    private static int evaluateQueenPosition(Model model, int position) {
+    private static int getQueenOptionsAmount(Model model, int position) {
         int row = position / BOARD_SIZE;
         int col = position % BOARD_SIZE;
         int possibleOptions = 0;
@@ -149,30 +146,6 @@ public class Minimax {
 
         return possibleOptions;
     }
-
-    public static void orderMoves(List<int[]> moves, Model model) {
-        moves.sort((move1, move2) -> {
-
-            model.movePiece(move1[0], move1[1]);
-            model.placeWall(move1[2]);
-            int evaluation1 = evaluation(model);
-            model.unPlaceWall(move1[2]);
-            model.movePiece(move1[1], move1[0]);
-
-
-            model.movePiece(move2[0], move2[1]);
-            model.placeWall(move2[2]);
-            int evaluation2 = evaluation(model);
-            model.unPlaceWall(move2[2]);
-            model.movePiece(move2[1], move2[0]);
-
-            return Integer.compare(evaluation2, evaluation1);
-        });
-    }
-
-
-
-
 
 
 }

@@ -2,6 +2,8 @@ package Game;
 
 import Game.AI.Minimax;
 
+import java.util.Arrays;
+
 public class Controller {
 
     private int selectedPosition = -1;
@@ -28,7 +30,10 @@ public class Controller {
     }
 
     public void aiPlay(){
-        int[] bestMove = Minimax.minimax(model, 2);
+        int[] bestMove = Minimax.minimax(model, 3);
+
+        System.out.println(Arrays.toString(bestMove));
+
         model.movePiece(bestMove[0], bestMove[1]);
         model.placeWall(bestMove[2]);
     }

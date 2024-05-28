@@ -10,7 +10,5 @@ public class Constants {
     public static final int SELECTING_START = -1;
     public static final int WALL_PLACING = -2;
 
-    public static int[] directionOffsets = {-BOARD_SIZE - 1, -BOARD_SIZE, -BOARD_SIZE + 1, -1, 1, -1 + BOARD_SIZE, BOARD_SIZE, 1 + BOARD_SIZE};
-
 
 }

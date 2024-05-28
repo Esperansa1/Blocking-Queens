@@ -8,9 +8,9 @@ public class Model implements Serializable {
     private final List<Observer> observers;
     public static final int BOARD_SIZE = 8;
 
-    private final Set<Integer> blackQueenPositions;
-    private final Set<Integer> wallPositions;
-    private final Set<Integer> whiteQueenPositions;
+    private Set<Integer> blackQueenPositions;
+    private Set<Integer> wallPositions;
+    private Set<Integer> whiteQueenPositions;
 
     // Bitboards to represent the queens
     private long whiteQueens;
@@ -259,5 +259,45 @@ public class Model implements Serializable {
 
     public static boolean isValidPosition(int row, int col) {
         return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+    }
+
+    public long getWhiteQueens() {
+        return whiteQueens;
+    }
+
+    public void setWhiteQueens(long whiteQueens) {
+        this.whiteQueens = whiteQueens;
+    }
+
+    public long getBlackQueens() {
+        return blackQueens;
+    }
+
+    public void setBlackQueens(long blackQueens) {
+        this.blackQueens = blackQueens;
+    }
+
+    public long getWalls() {
+        return walls;
+    }
+
+    public void setWalls(long walls) {
+        this.walls = walls;
+    }
+
+    public void setCurrentPlayer(int currentPlayer) {
+        this.currentPlayer = currentPlayer;
+    }
+
+    public void setBlackQueenPositions(Set<Integer> blackQueenPositions) {
+        this.blackQueenPositions = blackQueenPositions;
+    }
+
+    public void setWallPositions(Set<Integer> wallPositions) {
+        this.wallPositions = wallPositions;
+    }
+
+    public void setWhiteQueenPositions(Set<Integer> whiteQueenPositions) {
+        this.whiteQueenPositions = whiteQueenPositions;
     }
 }

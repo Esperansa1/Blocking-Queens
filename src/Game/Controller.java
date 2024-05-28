@@ -28,9 +28,9 @@ public class Controller {
     }
 
     public void aiPlay(){
-        int[] bestMove = Minimax.minimax(model, 2);
-        model.movePiece(bestMove[1], bestMove[2]);
-        model.placeWall(bestMove[3]);
+        int[] bestMove = Minimax.minimax(model, 1);
+        model.movePiece(bestMove[0], bestMove[1]);
+        model.placeWall(bestMove[2]);
     }
 
 

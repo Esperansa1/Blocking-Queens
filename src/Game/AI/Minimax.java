@@ -4,7 +4,6 @@ import Game.Constants;
 import Game.Model;
 import Game.Observer;
 
-import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -13,70 +12,88 @@ import static Game.Constants.BOARD_SIZE;
 
 public class Minimax {
 
-    static int count = 0;
+    static int counter = 0;
     public static int[] minimax(Model model, int depth) {
-        int alpha = Integer.MIN_VALUE;
-        int beta = Integer.MAX_VALUE;
+
         List<Observer> observers = new ArrayList<>(model.getObservers());
         model.unregisterAllObservers();
-        int[] value =  minimax(model, depth, alpha, beta, true);
+
+        int[] value =  bestMove(model, depth);
+
+        System.out.println(counter);
+
         model.addAllObservers(observers);
-        System.out.println(count);
+
         return value;
     }
 
 
 
-    public static int[] minimax(Model model, int depth, int alpha, int beta, boolean isMaximizing) {
-        if (depth <= 0 || model.isGameOver()) {
-            return new int[]{evaluation(model), -1, -1, -1}; // Return the evaluation score and a dummy move (-1, -1, -1)
-        }
-        int[] bestMove = new int[3];
-        if (isMaximizing) {
-            int maxValue = Integer.MIN_VALUE;
-            List<int[]> moves = model.generatePossibleMoves(Constants.BLACK);
-            orderMoves(moves);
-            for (int[] move : moves) {
-                count++;
-                model.movePiece(move[0], move[1]);
-                model.placeWall(move[2]);
-                int[] valueAndMove = minimax(model, depth - 1, alpha, beta, false);
-                int value = valueAndMove[0];
-                if (value > maxValue) {
-                    maxValue = value;
-                    bestMove = move;
+    public static int[] bestMove(Model model, int depth) {
+        int bestScore = Integer.MIN_VALUE;
+        int[] bestMove = null;
 
-                }
-                alpha = Math.max(alpha, value);
-                model.unPlaceWall(move[2]);
-                model.movePiece(move[1], move[0]);
-                if (value > beta) {
-                    break; // Beta cutoff
-                }
+        List<int[]> moves = model.generatePossibleMoves(Constants.BLACK);
+        orderMoves(moves);
+
+        for (int[] move : moves) {
+            model.movePiece(move[0], move[1]);
+            model.placeWall(move[2]);
+
+            int score = minimaxScore(model, depth - 1, true);
+
+            model.unPlaceWall(move[2]);
+            model.movePiece(move[1], move[0]);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = move;
             }
-            return new int[]{maxValue, bestMove[0], bestMove[1], bestMove[2]}; // Return the best score and the best move
-        } else {
-            int minValue = Integer.MAX_VALUE;
-            List<int[]> moves = model.generatePossibleMoves(Constants.WHITE);
-            count++;
-            orderMoves(moves);
+        }
+
+        return bestMove;
+    }
+
+    private static int minimaxScore(Model model, int depth, boolean isMaximizing) {
+        if (depth == 0 || model.isGameOver()) {
+            return evaluation(model);
+        }
+
+        if (isMaximizing) {
+            int bestScore = Integer.MIN_VALUE;
+            List<int[]> moves = model.generatePossibleMoves(Constants.BLACK);
+            System.out.println(moves);
             for (int[] move : moves) {
+                counter++;
                 model.movePiece(move[0], move[1]);
                 model.placeWall(move[2]);
-                int[] valueAndMove = minimax(model, depth - 1, alpha, beta, true);
-                int value = valueAndMove[0];
-                if (value < minValue) {
-                    minValue = value;
-                    bestMove = move;
-                }
-                beta = Math.min(beta, value);
+
+                int score = minimaxScore(model, depth - 1, false);
+
                 model.unPlaceWall(move[2]);
                 model.movePiece(move[1], move[0]);
-                if (value < alpha) {
-                    break; // Alpha cutoff
-                }
+
+                bestScore = Math.max(bestScore, score);
             }
-            return new int[]{minValue, bestMove[0], bestMove[1], bestMove[2]}; // Return the best score and the best move
+            return bestScore;
+        } else {
+            int bestScore = Integer.MAX_VALUE;
+            List<int[]> moves = model.generatePossibleMoves(Constants.WHITE);
+            System.out.println(moves);
+            for (int[] move : moves) {
+                counter++;
+
+                model.movePiece(move[0], move[1]);
+                model.placeWall(move[2]);
+
+                int score = minimaxScore(model, depth - 1, true);
+
+                model.unPlaceWall(move[2]);
+                model.movePiece(move[1], move[0]);
+
+                bestScore = Math.min(bestScore, score);
+            }
+            return bestScore;
         }
     }
 
@@ -122,6 +139,12 @@ public class Minimax {
 
     public static void orderMoves(List<int[]> moves){
 
-        moves.sort(Comparator.comparingInt(o -> o[0]));
+        moves.sort((o1, o2) -> o2[0] - o1[0]);
     }
+
+
+
+
+
+
 }

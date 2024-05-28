@@ -1,5 +1,7 @@
 package Game;
 
+import Game.AI.Minimax;
+
 public class Controller {
 
     private int selectedPosition = -1;
@@ -13,34 +15,54 @@ public class Controller {
     }
 
     public void handleMouseClick(int row, int col) {
-
-        // Translation of row, col to correct board position
         int newPosition = row * Model.BOARD_SIZE + col;
 
-        if(selectionMode == Constants.WALL_PLACING && model.isWalkable(newPosition)) {
-            // Place wall
-            if(model.isMoveValid(selectedPosition, newPosition)) {
-                model.placeWall(newPosition);
-                selectionMode = Constants.SELECTING_START;
-                selectedPosition = -1;
-            }
+        if (selectionMode == Constants.WALL_PLACING) {
+            handleWallPlacement(newPosition);
+            aiPlay();
         } else if (selectionMode == Constants.SELECTING_START && selectedPosition == -1) {
-            // Select piece
-            int piece = model.getPiece(newPosition);
-            if (piece != Constants.EMPTY && piece != Constants.WALL) {
-                selectedPosition = newPosition;
-            }
-        } else  if(selectionMode == Constants.SELECTING_START){
-            // Move piece
+            selectPiece(newPosition);
+        } else if (selectionMode == Constants.SELECTING_START) {
+            movePiece(newPosition);
+        }
+    }
+
+    public void aiPlay(){
+        int[] bestMove = Minimax.minimax(model, 2);
+        model.movePiece(bestMove[1], bestMove[2]);
+        model.placeWall(bestMove[3]);
+    }
+
+
+    private void handleWallPlacement(int newPosition) {
+        if (model.isWalkable(newPosition)) {
             if (model.isMoveValid(selectedPosition, newPosition)) {
-                model.movePiece(selectedPosition, newPosition);
-                selectionMode = Constants.WALL_PLACING;
-                selectedPosition = newPosition;
-            }else {
+                model.placeWall(newPosition);
                 selectionMode = Constants.SELECTING_START;
                 selectedPosition = -1;
             }
         }
     }
+
+    private void selectPiece(int newPosition) {
+        int piece = model.getPiece(newPosition);
+        if (piece != Constants.EMPTY && piece != Constants.WALL) {
+            selectedPosition = newPosition;
+        }
+    }
+
+    private void movePiece(int newPosition) {
+        if (model.isMoveValid(selectedPosition, newPosition)) {
+            model.movePiece(selectedPosition, newPosition);
+            selectionMode = Constants.WALL_PLACING;
+            selectedPosition = newPosition;
+        } else {
+            selectionMode = Constants.SELECTING_START;
+            selectedPosition = -1;
+        }
+    }
+
+
+
 
 }

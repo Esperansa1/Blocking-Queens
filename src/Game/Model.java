@@ -1,12 +1,16 @@
 package Game;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.Serializable;
+import java.util.*;
 
-public class Model {
+public class Model implements Serializable {
 
-    private ArrayList<Observer> observers;
+    private final List<Observer> observers;
     public static final int BOARD_SIZE = 8;
+
+    private final Set<Integer> blackQueenPositions;
+    private final Set<Integer> wallPositions;
+    private final Set<Integer> whiteQueenPositions;
 
     // Bitboards to represent the queens
     private long whiteQueens;
@@ -17,6 +21,9 @@ public class Model {
 
     public Model() {
         this.observers = new ArrayList<>();
+        whiteQueenPositions = new HashSet<>();
+        blackQueenPositions = new HashSet<>();
+        wallPositions = new HashSet<>();
         initializeQueens();
     }
 
@@ -24,10 +31,20 @@ public class Model {
     private void initializeQueens() {
         // Example positions for queens
         // Let's say the white queens are at A1, D4, and H8
-        whiteQueens = (1L) | (1L << 27) | (1L << 63);
+        whiteQueens = (1L << 3) | (1L << 27) | (1L << 63);
+        whiteQueenPositions.add(3);
+        whiteQueenPositions.add(27);
+        whiteQueenPositions.add(63);
+
 
         // And the black queens are at B2, E5, and G7
         blackQueens = (1L << 9) | (1L << 36) | (1L << 54);
+        blackQueenPositions.add(9);
+        blackQueenPositions.add(36);
+        blackQueenPositions.add(54);
+
+
+
     }
 
     public boolean isWhiteQueen(int position){
@@ -50,19 +67,28 @@ public class Model {
         return generatePossibleMoves(currentPlayer).isEmpty();
     }
 
+    public int getCurrentPlayer() {
+        return currentPlayer;
+    }
+
     public void movePiece(int oldPosition, int newPosition) {
         if (isWhiteQueen(oldPosition)) {
             whiteQueens &= ~(1L << oldPosition); // Remove from old position
             whiteQueens |= (1L << newPosition); // Add to new position
+            whiteQueenPositions.remove(oldPosition);
+            whiteQueenPositions.add(newPosition);
         } else if (isBlackQueen(oldPosition)) {
             blackQueens &= ~(1L << oldPosition); // Remove from old position
             blackQueens |= (1L << newPosition); // Add to new position
+            blackQueenPositions.remove(oldPosition);
+            blackQueenPositions.add(newPosition);
         }
         notifyObservers();
     }
 
     public void placeWall(int position) {
         walls |= (1L << position);
+        wallPositions.add(position);
         currentPlayer = currentPlayer == Constants.WHITE ? Constants.BLACK : Constants.WHITE;
 
         notifyObservers();
@@ -74,6 +100,30 @@ public class Model {
         if(isBlackQueen(position)) return Constants.BLACK;
         if(isWall(position)) return Constants.WALL;
         return Constants.EMPTY;
+    }
+
+    public void unPlaceWall(int position){
+        walls &= ~(1L << position);
+        wallPositions.remove(position);
+        currentPlayer = currentPlayer == Constants.WHITE ? Constants.BLACK : Constants.WHITE;
+
+        notifyObservers();
+    }
+
+    public void printBoard() {
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                int position = row * BOARD_SIZE + col;
+                if ((whiteQueens & (1L << position)) != 0) {
+                    System.out.print("W ");
+                } else if ((blackQueens & (1L << position)) != 0) {
+                    System.out.print("B ");
+                } else {
+                    System.out.print(". ");
+                }
+            }
+            System.out.println();
+        }
     }
 
 
@@ -118,73 +168,96 @@ public class Model {
         return false;
     }
 
+    public List<int[]> generatePossibleMoves(int playerColor) {
+        List<int[]> possibleMoves = new ArrayList<>();
 
-    public List<Integer> generatePossibleMoves(int playerColor) {
-        List<Integer> possibleMoves = new ArrayList<>();
+        List<Integer> positionsToCheck = new ArrayList<>();
+        positionsToCheck.addAll(getBlackQueenPositions());
+        positionsToCheck.addAll(getWhiteQueenPositions());
 
-        for (int position = 0; position < BOARD_SIZE * BOARD_SIZE; position++) {
+        for (int position : positionsToCheck) {
             int piece = getPiece(position);
 
             // Check if the piece is a queen of the current player's color
-            if (piece == (playerColor == Constants.WHITE ? Constants.WHITE : Constants.BLACK)) {
+            if (piece == playerColor) {
                 // Generate possible moves for this queen
-                List<Integer> queenMoves = generateQueenMoves(position);
-                possibleMoves.addAll(queenMoves);
+                List<Integer> queenMoves = generatePossibleMovements(position);
+                for (int move : queenMoves) {
+                    // For each move, generate possible wall placements
+                    List<Integer> possibleWallPlacements = generatePossibleMovements(move);
+                    for (int wallPos : possibleWallPlacements) {
+                            possibleMoves.add(new int[]{position, move, wallPos});
+                    }
+                }
             }
         }
 
         return possibleMoves;
     }
 
-    private List<Integer> generateQueenMoves(int position) {
+    private List<Integer> generatePossibleMovements(int startPosition) {
         List<Integer> moves = new ArrayList<>();
 
         // Extract row and column indices
-        int row = position / BOARD_SIZE;
-        int col = position % BOARD_SIZE;
 
-        // Generate horizontal and vertical moves
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            if (i != col) {
-                moves.add(row * BOARD_SIZE + i); // Horizontal moves
-            }
-            if (i != row) {
-                moves.add(i * BOARD_SIZE + col); // Vertical moves
+        for (int directionIndex = 0; directionIndex < BOARD_SIZE; directionIndex++) {
+            for (int n = 0; n < 8; n++) {
+                if(!isValidPosition(directionIndex, n)) continue;
+                int position =  startPosition + Constants.directionOffsets[directionIndex] * (n + 1);
+                if(isWalkable(position))
+                    moves.add(position);
+                else
+                    break;
             }
         }
 
-        // Generate diagonal moves
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            if (row - i >= 0 && col - i >= 0) {
-                moves.add((row - i) * BOARD_SIZE + (col - i)); // Top-left diagonal
-            }
-            if (row - i >= 0 && col + i < BOARD_SIZE) {
-                moves.add((row - i) * BOARD_SIZE + (col + i)); // Top-right diagonal
-            }
-            if (row + i < BOARD_SIZE && col - i >= 0) {
-                moves.add((row + i) * BOARD_SIZE + (col - i)); // Bottom-left diagonal
-            }
-            if (row + i < BOARD_SIZE && col + i < BOARD_SIZE) {
-                moves.add((row + i) * BOARD_SIZE + (col + i)); // Bottom-right diagonal
-            }
-        }
+
 
         return moves;
     }
 
+    public Set<Integer> getWhiteQueenPositions() {
+        return whiteQueenPositions;
+    }
 
+    public Set<Integer> getBlackQueenPositions() {
+        return blackQueenPositions;
+    }
+
+    public Set<Integer> getWallPositions() {
+        return wallPositions;
+    }
 
     public void addObserver(Observer observer) {
         observers.add(observer);
     }
 
+    public void unregisterAllObservers(){
+        observers.clear();
+    }
+
+    public List<Observer> getObservers() {
+        return observers;
+    }
+
+    public void addAllObservers(List<Observer> newObservers){
+        observers.addAll(newObservers);
+    }
+
+
     public void notifyObservers(){
+        if(observers.isEmpty()) return;
+
         for(Observer observer : observers)
             observer.onBoardChanged();
 
-        if(isGameOver())
-            for(Observer observer : observers)
+        if(isGameOver()) {
+            for (Observer observer : observers)
                 observer.onGameOver();
+        }
+    }
 
+    public static boolean isValidPosition(int row, int col) {
+        return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
     }
 }

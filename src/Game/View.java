@@ -2,15 +2,15 @@ package Game;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 public class View extends JFrame implements Observer{
 
-    private JPanel boardPanel;
-    private Model model;
-    private Controller controller;
+    private final JPanel boardPanel;
+    private final Model model;
+    private final Controller controller;
 
+    public static final int SQUARE_SIZE = 100;
+    public static final String asset_path = "src/Game/Assets";
 
     public View(Model model, Controller controller) {
         this.model = model;
@@ -38,10 +38,11 @@ public class View extends JFrame implements Observer{
                 square.setBackground((row + col) % 2 == 0 ? Color.WHITE : Color.DARK_GRAY);
                 int finalRow = row;
                 int finalCol = col;
-                square.setPreferredSize(new Dimension(100, 100)); // Increase the size of the square
+                square.setPreferredSize(new Dimension(SQUARE_SIZE, SQUARE_SIZE)); // Increase the size of the square
                 square.addActionListener(e -> controller.handleMouseClick(finalRow, finalCol)); // Use ActionListener
                 square.setBorderPainted(false);
-
+                square.setFocusPainted(false);  // Disable the focus border
+                square.setOpaque(true);
 
                 boardPanel.add(square);
             }
@@ -54,27 +55,40 @@ public class View extends JFrame implements Observer{
         for (int row = 0; row < Constants.BOARD_SIZE; row++) {
             for (int col = 0; col < Constants.BOARD_SIZE; col++) {
                 JButton square = (JButton) boardPanel.getComponent(row * Constants.BOARD_SIZE + col);
-                square.removeAll();
+                // Clear the previous icon
+                square.setIcon(null);
                 int position = row * Constants.BOARD_SIZE + col;
                 int piece = model.getPiece(position);
-                if(piece == Constants.EMPTY) continue;
-                if(piece == Constants.WALL){
-                    square.setBackground(Color.BLACK);
+                if (piece == Constants.EMPTY){
+                    square.setBackground((row + col) % 2 == 0 ? Color.WHITE : Color.DARK_GRAY);
                 }
-                else{
-                    JLabel label = new JLabel(piece == Constants.WHITE ? " W" : "  B");
-                    label.setForeground(Color.RED);
-                    label.setHorizontalAlignment(SwingConstants.CENTER);
-                    label.setVerticalAlignment(SwingConstants.CENTER);
-                    label.setFont(label.getFont().deriveFont(40f));
+                else if (piece == Constants.WALL) {
+                    square.setBackground(Color.BLACK);
+                } else {
+                    ImageIcon pieceIcon = getImageIcon(piece, square);
 
-                    square.add(label);
+                    // Set the icon to the button
+                    square.setIcon(pieceIcon);
+                    square.setHorizontalAlignment(SwingConstants.CENTER);
+                    square.setVerticalAlignment(SwingConstants.CENTER);
                 }
             }
         }
         boardPanel.revalidate();
         boardPanel.repaint();
     }
+
+    private static ImageIcon getImageIcon(int piece, JButton square) {
+        String imagePath = piece == Constants.WHITE ? asset_path+"/white_queen.png" : asset_path+"/black_queen.png";
+        ImageIcon pieceIcon = new ImageIcon(imagePath);
+
+        // Scale the image to fit the button
+        Image image = pieceIcon.getImage();
+        Image scaledImage = image.getScaledInstance((int) (square.getWidth() * 0.8), (int) (square.getHeight() * 0.8), Image.SCALE_SMOOTH);
+        pieceIcon = new ImageIcon(scaledImage);
+        return pieceIcon;
+    }
+
 
     public void gameOver(){
         for (int row = 0; row < Constants.BOARD_SIZE; row++) {

@@ -66,13 +66,15 @@ public class View extends JFrame implements Observer{
                     square.setBackground(Color.BLACK);
                 } else {
                     ImageIcon pieceIcon = getImageIcon(piece, square);
-
                     // Set the icon to the button
                     square.setIcon(pieceIcon);
                     square.setHorizontalAlignment(SwingConstants.CENTER);
                     square.setVerticalAlignment(SwingConstants.CENTER);
                 }
-            }
+                square.setText(row * Constants.BOARD_SIZE + col + " ");
+                Font currentFont = square.getFont();
+                Font newFont = currentFont.deriveFont(currentFont.getStyle(), 20f); // 20f is the new font size
+                square.setFont(newFont);            }
         }
         boardPanel.revalidate();
         boardPanel.repaint();

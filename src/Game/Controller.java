@@ -20,8 +20,10 @@ public class Controller {
         int newPosition = row * Model.BOARD_SIZE + col;
 
         if (selectionMode == Constants.WALL_PLACING) {
-            handleWallPlacement(newPosition);
-            aiPlay();
+//            model.generatePossibleWalls((short) selectedPosition);
+            if(handleWallPlacement(newPosition))
+                aiPlay();
+
         } else if (selectionMode == Constants.SELECTING_START && selectedPosition == -1) {
             selectPiece(newPosition);
         } else if (selectionMode == Constants.SELECTING_START) {
@@ -30,7 +32,7 @@ public class Controller {
     }
 
     public void aiPlay(){
-        int[] bestMove = Minimax.minimax(model, 3);
+        short[] bestMove = Minimax.minimax(model, 4);
 
         System.out.println(Arrays.toString(bestMove));
 
@@ -39,14 +41,14 @@ public class Controller {
     }
 
 
-    private void handleWallPlacement(int newPosition) {
-        if (model.isWalkable(newPosition)) {
-            if (model.isMoveValid(selectedPosition, newPosition)) {
+    private boolean handleWallPlacement(int newPosition) {
+        if (model.isWalkable(newPosition) && model.isMoveValid(selectedPosition, newPosition)) {
                 model.placeWall(newPosition);
                 selectionMode = Constants.SELECTING_START;
                 selectedPosition = -1;
-            }
+                return true;
         }
+        return false;
     }
 
     private void selectPiece(int newPosition) {
@@ -58,7 +60,7 @@ public class Controller {
 
     private void movePiece(int newPosition) {
         if (model.isMoveValid(selectedPosition, newPosition)) {
-            model.movePiece(selectedPosition, newPosition);
+            model.movePiece((short)selectedPosition,(short)newPosition);
             selectionMode = Constants.WALL_PLACING;
             selectedPosition = newPosition;
         } else {

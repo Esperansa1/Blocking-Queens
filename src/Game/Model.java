@@ -2,17 +2,17 @@ package Game;
 
 import Game.AI.MagicBitboard;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 public class Model implements Serializable {
 
-    private final List<Observer> observers;
+    private List<Observer> observers;
     public static final int BOARD_SIZE = 8;
 
 
-    private final int[] blackQueenPositions;
-    private final int[] whiteQueenPositions;
+    private final short[] blackQueenPositions;
+    private final short[] whiteQueenPositions;
 
     // Bitboards to represent the queens
     private long whiteQueens;
@@ -20,14 +20,12 @@ public class Model implements Serializable {
     private long walls;
     private int currentPlayer = Constants.WHITE;
 
-    private final MagicBitboard magicBitboards;
 
     public Model() {
         this.observers = new ArrayList<>();
-        magicBitboards = new MagicBitboard();
 
-        blackQueenPositions = new int[3];
-        whiteQueenPositions = new int[3];
+        blackQueenPositions = new short[3];
+        whiteQueenPositions = new short[3];
         initializeQueens();
     }
 
@@ -71,7 +69,7 @@ public class Model implements Serializable {
     }
 
 
-    public boolean hasMoves(int[] positions){
+    public boolean hasMoves(short[] positions){
         for(int queenPosition : positions) {
             for (int i = -1; i <= 1; i++) {
                 for (int j = -1; j <= 1; j++) {
@@ -96,7 +94,7 @@ public class Model implements Serializable {
         return currentPlayer;
     }
 
-    public void movePiece(int oldPosition, int newPosition) {
+    public void movePiece(short oldPosition, short newPosition) {
         if (isWhiteQueen(oldPosition)) {
             whiteQueens &= ~(1L << oldPosition); // Remove from old position
             whiteQueens |= (1L << newPosition); // Add to new position
@@ -111,7 +109,7 @@ public class Model implements Serializable {
         notifyObservers();
     }
 
-    private void updateQueenPosition(int[] positions, int oldPosition, int newPosition) {
+    private void updateQueenPosition(short[] positions, short oldPosition, short newPosition) {
         for (int i = 0; i < 3; i++) {
             if (positions[i] == oldPosition) {
                 positions[i] = newPosition;
@@ -185,58 +183,52 @@ public class Model implements Serializable {
     }
 
 
-    public int[][] generatePossibleMoves(int playerColor) {
-        List<int[]> possibleMovesList = new ArrayList<>();
+    public short[][] generatePossibleMoves(int playerColor) {
+        short[][] possibleMovesList = new short[27 * 3][2];
 
-        int[] queensPositions = playerColor == Constants.WHITE ? whiteQueenPositions : blackQueenPositions;
+        short[] queensPositions = playerColor == Constants.WHITE ? whiteQueenPositions : blackQueenPositions;
         long occupancy = getOccupancy();
+
+        int k = 0;
 
         for (int position : queensPositions) {
             long queenMoves = MagicBitboard.getQueenAttacks(position, occupancy);
             while (queenMoves != 0) {
                 int to = Long.numberOfTrailingZeros(queenMoves);
                 queenMoves &= queenMoves - 1; // Remove the least significant bit
-
-                long newOccupancy = (occupancy & ~(1L << position)) | (1L << to);
-                long wallMoves = MagicBitboard.getQueenAttacks(to, newOccupancy);
-
-                while (wallMoves != 0) {
-                    int wall = Long.numberOfTrailingZeros(wallMoves);
-                    wallMoves &= wallMoves - 1; // Remove the least significant bit
-
-                    possibleMovesList.add(new int[]{position, to, wall});
-                }
+                possibleMovesList[k++] = new short[]{(short)position, (short)to};
             }
         }
+        return possibleMovesList;
+    }
 
-        return possibleMovesList.toArray(new int[0][0]);
+    public short[] generatePossibleWalls(short lastMovedPosition) {
+        short[] possibleMovesList = new short[27];
+
+        long occupancy = getOccupancy();
+
+        int k = 0;
+
+        long queenMoves = MagicBitboard.getQueenAttacks(lastMovedPosition, occupancy);
+        while (queenMoves != 0) {
+            int to = Long.numberOfTrailingZeros(queenMoves);
+            queenMoves &= queenMoves - 1; // Remove the least significant bit
+            possibleMovesList[k] = (short) to;
+            k++;
+        }
+
+        possibleMovesList[k] = -1;
+
+
+        return possibleMovesList;
     }
 
 
-    private static void printBinaryBoard(String binaryString, int rows, int cols) {
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                // Calculate the index in the binary string
-                int index = i * cols + j;
-                // Print the binary digit
-                if(index < binaryString.length())
-                    System.out.print(binaryString.charAt(index) + " ");
-                else
-                    System.out.print(0 + " ");
-
-            }
-            // Print a new line after each row
-            System.out.println();
-        }
-    }
-
-
-
-    public int[] getWhiteQueenPositions() {
+    public short[] getWhiteQueenPositions() {
         return whiteQueenPositions;
     }
 
-    public int[] getBlackQueenPositions() {
+    public short[] getBlackQueenPositions() {
         return blackQueenPositions;
     }
 
@@ -256,22 +248,6 @@ public class Model implements Serializable {
         observers.addAll(newObservers);
     }
 
-    private void printBoard() {
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                int position = row * BOARD_SIZE + col;
-                if ((whiteQueens & (1L << position)) != 0) {
-                    System.out.print("W ");
-                } else if ((blackQueens & (1L << position)) != 0) {
-                    System.out.print("B ");
-                } else {
-                    System.out.print(". ");
-                }
-            }
-            System.out.println();
-        }
-    }
-
     public void notifyObservers(){
         if(observers.isEmpty()) return;
 
@@ -283,6 +259,45 @@ public class Model implements Serializable {
                 observer.onGameOver();
         }
 
+    }
+
+    public Model deepCopy() {
+        try {
+            // Write object to a byte array
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream out = new ObjectOutputStream(bos);
+            out.writeObject(this);
+            out.flush();
+            out.close();
+
+            // Read object from byte array
+            ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+            ObjectInputStream in = new ObjectInputStream(bis);
+            return (Model) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static boolean isValidMove(int previousPosition, int newPosition) {
+
+        int prevRow = previousPosition / BOARD_SIZE;
+        int prevCol = previousPosition % BOARD_SIZE;
+
+        int newRow = newPosition / BOARD_SIZE;
+        int newCol = newPosition % BOARD_SIZE;
+
+        // Check if the new position is within the board boundaries
+        if (newRow < 0 || newRow >= BOARD_SIZE || newCol < 0 || newCol >= BOARD_SIZE) {
+            return false;
+        }
+
+        // Check if the new position is one step away from the previous position
+        int rowDiff = Math.abs(prevRow - newRow);
+        int colDiff = Math.abs(prevCol - newCol);
+
+        return (rowDiff == 1 && colDiff == 0) || (rowDiff == 0 && colDiff == 1) || (rowDiff == 1 && colDiff == 1); // Valid move (one step horizontally or vertically)
     }
 
 

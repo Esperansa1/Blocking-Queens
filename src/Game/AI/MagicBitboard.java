@@ -120,11 +120,14 @@ public class MagicBitboard {
     }
 
     public static long getBishopAttacks(final int square, final long occupied) {
-        return MagicBishopDb[square][(int) (((occupied & MagicmovesBMask[square]) * MagicmovesBMagics[square]) >>> 55)];
+        long attacks =  MagicBishopDb[square][(int) (((occupied & MagicmovesBMask[square]) * MagicmovesBMagics[square]) >>> 55)];
+        return attacks & ~occupied; // Exclude occupied squares
+
     }
 
     public static long getRookAttacks(final int square, final long occupied) {
-        return MagicRookDb[square][(int) (((occupied & MagicmovesRMask[square]) * MagicmovesRMagics[square]) >>> 52)];
+        long attacks =  MagicRookDb[square][(int) (((occupied & MagicmovesRMask[square]) * MagicmovesRMagics[square]) >>> 52)];
+        return attacks & ~occupied; // Exclude occupied squares
     }
 
     public static long getQueenAttacks(final int square, final long occupied) {
@@ -147,21 +150,27 @@ public class MagicBitboard {
         long bit = One << square;
         do {
             bit <<= 8;
-            ret |= bit;
+            if ((bit & occ) == 0) // Check if the square is not occupied
+                ret |= bit;
+            else
+                break;
         }
-        while (bit > 0 && (bit & occ) == 0);
+        while (bit > 0);
 
         bit = One << square;
         do {
             bit >>>= 8;
-            ret |= bit;
+            if ((bit & occ) == 0) // Check if the square is not occupied
+                ret |= bit;
+            else
+                break;
         }
-        while (bit != 0 && (bit & occ) == 0);
+        while (bit != 0);
 
         bit = One << square;
         do {
             bit <<= 1;
-            if ((bit & rowbits) != 0)
+            if ((bit & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
@@ -171,7 +180,7 @@ public class MagicBitboard {
         bit = One << square;
         do {
             bit >>>= 1;
-            if ((bit & rowbits) != 0)
+            if ((bit & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
@@ -190,48 +199,48 @@ public class MagicBitboard {
         do {
             bit <<= 8 - 1;
             bit2 >>>= 1;
-            if ((bit2 & rowbits) != 0)
+            if ((bit2 & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
         }
-        while (bit != 0 && (bit & occ) == 0);
+        while (bit != 0);
 
         bit = One << square;
         bit2 = bit;
         do {
             bit <<= 8 + 1;
             bit2 <<= 1;
-            if ((bit2 & rowbits) != 0)
+            if ((bit2 & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
         }
-        while (bit != 0 && (bit & occ) == 0);
+        while (bit != 0);
 
         bit = One << square;
         bit2 = bit;
         do {
             bit >>>= 8 - 1;
             bit2 <<= 1;
-            if ((bit2 & rowbits) != 0)
+            if ((bit2 & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
         }
-        while (bit != 0 && (bit & occ) == 0);
+        while (bit != 0);
 
         bit = One << square;
         bit2 = bit;
         do {
             bit >>>= 8 + 1;
             bit2 >>= 1;
-            if ((bit2 & rowbits) != 0)
+            if ((bit2 & rowbits) != 0 && (bit & occ) == 0) // Check if the square is not occupied
                 ret |= bit;
             else
                 break;
         }
-        while (bit > 0 && (bit & occ) == 0);
+        while (bit > 0);
 
         return ret;
     }

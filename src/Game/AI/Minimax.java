@@ -17,11 +17,15 @@ public class Minimax {
         List<Observer> observers = new ArrayList<>(model.getObservers());
         model.unregisterAllObservers();
 
+
         int[] value = bestMove(model, depth);
 
         model.addAllObservers(observers);
 
         System.out.println(counter);
+
+
+
 
         return value;
     }
@@ -63,6 +67,7 @@ public class Minimax {
             int bestScore = Integer.MIN_VALUE;
             int[][] moves = model.generatePossibleMoves(Constants.BLACK);
             for (int[] move : moves) {
+                if(move[0] == -1 ) break;
                 counter++;
 
 

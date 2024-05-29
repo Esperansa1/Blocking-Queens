@@ -1,6 +1,6 @@
 package Game;
 
-import Game.AI.MagicBitboards;
+import Game.AI.MagicBitboard;
 
 import java.io.Serializable;
 import java.util.*;
@@ -20,11 +20,11 @@ public class Model implements Serializable {
     private long walls;
     private int currentPlayer = Constants.WHITE;
 
-    private final MagicBitboards magicBitboards;
+    private final MagicBitboard magicBitboards;
 
     public Model() {
         this.observers = new ArrayList<>();
-        magicBitboards = new MagicBitboards();
+        magicBitboards = new MagicBitboard();
 
         blackQueenPositions = new int[3];
         whiteQueenPositions = new int[3];
@@ -35,10 +35,10 @@ public class Model implements Serializable {
     private void initializeQueens() {
         // Example positions for queens
         // Let's say the white queens are at A1, D4, and H8
-        whiteQueens = (1L << 3) | (1L << 27) | (1L << 63);
-        whiteQueenPositions[0] = 3;
+        whiteQueens = (1L << 0) | (1L << 27) | (1L << 60);
+        whiteQueenPositions[0] = 0;
         whiteQueenPositions[1] = 27;
-        whiteQueenPositions[2] = 63;
+        whiteQueenPositions[2] = 60;
 
 
         // And the black queens are at B2, E5, and G7
@@ -186,30 +186,48 @@ public class Model implements Serializable {
 
 
     public int[][] generatePossibleMoves(int playerColor) {
-        int[][] possibleMovesList = new int[64*64][3];
+        List<int[]> possibleMovesList = new ArrayList<>();
 
         int[] queensPositions = playerColor == Constants.WHITE ? whiteQueenPositions : blackQueenPositions;
         long occupancy = getOccupancy();
 
-        int k = 0;
-
         for (int position : queensPositions) {
-            long queenMoves = magicBitboards.generateQueenMoves(position, occupancy);
-            for (int to = 0; to < 64; to++) {
-                if ((queenMoves & (1L << to)) != 0) {
+            long queenMoves = MagicBitboard.getQueenAttacks(position, occupancy);
+            while (queenMoves != 0) {
+                int to = Long.numberOfTrailingZeros(queenMoves);
+                queenMoves &= queenMoves - 1; // Remove the least significant bit
 
-                    long newOccupancy = (occupancy & ~(1L << position)) | (1L << to);
+                long newOccupancy = (occupancy & ~(1L << position)) | (1L << to);
+                long wallMoves = MagicBitboard.getQueenAttacks(to, newOccupancy);
 
-                    long wallMoves = magicBitboards.generateQueenMoves(to, newOccupancy);
-                        for (int wall = 0; wall < 64; wall++) {
-                            if ((wallMoves & (1L << wall)) != 0) {
-                                possibleMovesList[k++] = new int[]{position, to, wall};
-                            }
-                        }
-                    }
+                while (wallMoves != 0) {
+                    int wall = Long.numberOfTrailingZeros(wallMoves);
+                    wallMoves &= wallMoves - 1; // Remove the least significant bit
+
+                    possibleMovesList.add(new int[]{position, to, wall});
                 }
             }
-        return Arrays.copyOfRange(possibleMovesList, 0, k);
+        }
+
+        return possibleMovesList.toArray(new int[0][0]);
+    }
+
+
+    private static void printBinaryBoard(String binaryString, int rows, int cols) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                // Calculate the index in the binary string
+                int index = i * cols + j;
+                // Print the binary digit
+                if(index < binaryString.length())
+                    System.out.print(binaryString.charAt(index) + " ");
+                else
+                    System.out.print(0 + " ");
+
+            }
+            // Print a new line after each row
+            System.out.println();
+        }
     }
 
 

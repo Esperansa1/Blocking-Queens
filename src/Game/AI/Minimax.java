@@ -5,6 +5,7 @@ import Game.Model;
 import Game.Observer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -19,12 +20,17 @@ public class Minimax {
         List<Observer> observers = new ArrayList<>(model.getObservers());
         model.unregisterAllObservers();
 
+        long startTime = System.currentTimeMillis();
+
         counter = 0;
         short[] value = bestMove(model, depth);
 
         model.addAllObservers(observers);
 
-        System.out.println(counter);
+        System.out.println();
+        System.out.println("Time took = "+ formatSecondsToMinutesSeconds( (float) (System.currentTimeMillis() - startTime) / 1000 ));
+        System.out.println("Options tried = " +counter);
+        System.out.println("Chosen = " + Arrays.toString(value));
 
 
 
@@ -32,6 +38,11 @@ public class Minimax {
         return value;
     }
 
+    public static String formatSecondsToMinutesSeconds(float totalSeconds) {
+        int minutes = (int) (totalSeconds / 60);
+        float seconds = totalSeconds % 60;
+        return String.format("%d minutes, %f seconds", minutes, seconds);
+    }
 
 
     public static short[] bestMove(Model model, int depth) {
@@ -42,8 +53,6 @@ public class Minimax {
         short[][] moves = model.generatePossibleMoves(Constants.BLACK);
 
         for (short[] move : moves) {
-            if(move[0] == 0  && move[1] == 0) break;
-
             model.movePiece(move[0], move[1]);
             for (short wallPlacement : model.generatePossibleWalls(move[1])) {
                 MoveEvaluationTask task = new MoveEvaluationTask(model, move, wallPlacement, depth);
@@ -115,11 +124,9 @@ public class Minimax {
             int bestScore = Integer.MIN_VALUE;
             short[][] moves = model.generatePossibleMoves(Constants.BLACK);
             for (short[] move : moves) {
-                if(move[0] == 0  && move[1] == 0) break;
                 model.movePiece(move[0], move[1]);
 
                 for(int wallPlacement : model.generatePossibleWalls(move[1])){
-                    if(wallPlacement == -1) break;
                     counter++;
 
 
@@ -128,10 +135,10 @@ public class Minimax {
                     bestScore = Math.max(bestScore, minimaxScore(model, depth - 1, alpha, beta, false));
 
                     model.unPlaceWall(wallPlacement);
-                    if(bestScore >= beta) {
+                    alpha = Math.max(alpha, bestScore);
+                    if(beta <= alpha) {
                         break;
                     }
-                    alpha = Math.max(alpha, bestScore);
                 }
 
                 model.movePiece(move[1], move[0]);
@@ -143,13 +150,9 @@ public class Minimax {
             short[][] moves = model.generatePossibleMoves(Constants.WHITE);
             for (short[] move : moves) {
 
-                if(move[0] == 0  && move[1] == 0) break;
-
                 model.movePiece(move[0], move[1]);
 
                 for(int wallPlacement : model.generatePossibleWalls(move[1])){
-                    if(wallPlacement == -1) break;
-
                     counter++;
 
 
@@ -158,14 +161,14 @@ public class Minimax {
                     bestScore = Math.min(bestScore, minimaxScore(model, depth - 1, alpha, beta, true));
 
                     model.unPlaceWall(wallPlacement);
-                    if(bestScore <= alpha) {
+                    beta = Math.min(beta, bestScore);
+
+                    if(beta <= alpha) {
                         break;
                     }
-                    beta = Math.min(beta, bestScore);
+
                 }
                 model.movePiece(move[1], move[0]);
-
-
             }
             return bestScore;
         }

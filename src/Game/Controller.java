@@ -32,10 +32,7 @@ public class Controller {
     }
 
     public void aiPlay(){
-        short[] bestMove = Minimax.minimax(model, 4);
-
-        System.out.println(Arrays.toString(bestMove));
-
+        short[] bestMove = Minimax.minimax(model, 3);
         model.movePiece(bestMove[0], bestMove[1]);
         model.placeWall(bestMove[2]);
     }

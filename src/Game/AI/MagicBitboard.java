@@ -1,10 +1,6 @@
 package Game.AI;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
-import java.util.Random;
 
 public class MagicBitboard {
 
@@ -121,13 +117,13 @@ public class MagicBitboard {
 
     public static long getBishopAttacks(final int square, final long occupied) {
         long attacks =  MagicBishopDb[square][(int) (((occupied & MagicmovesBMask[square]) * MagicmovesBMagics[square]) >>> 55)];
-        return attacks & ~occupied; // Exclude occupied squares
+        return attacks & ~occupied & ~(1L << square); // Exclude occupied squares
 
     }
 
     public static long getRookAttacks(final int square, final long occupied) {
         long attacks =  MagicRookDb[square][(int) (((occupied & MagicmovesRMask[square]) * MagicmovesRMagics[square]) >>> 52)];
-        return attacks & ~occupied; // Exclude occupied squares
+        return attacks & ~occupied & ~(1L << square); // Exclude occupied squares
     }
 
     public static long getQueenAttacks(final int square, final long occupied) {
@@ -253,18 +249,5 @@ public class MagicBitboard {
             System.out.println();
         }
     }
-    public static int popLSB(long[] b) {
-        int i = Long.numberOfTrailingZeros(b[0]);
-        b[0] &= (b[0] - 1);
-        return i;
-    }
-    public static void main(String[] args) {
-        // Example usage:
-        long[] queenMoves = new long[]{getQueenAttacks(36, 100001100101000L)};
-        int i = popLSB(queenMoves);
 
-        System.out.println(i);
-        System.out.println(Long.toBinaryString(queenMoves[0]));
-        printBinaryBoard(Long.toBinaryString(queenMoves[0]), 8, 8);
-    }
 }

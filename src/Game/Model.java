@@ -20,6 +20,9 @@ public class Model implements Serializable {
     private long walls;
     private int currentPlayer = Constants.WHITE;
 
+    private int whiteQueenArrayPosition = 0;
+    private int blackQueenArrayPosition = 0;
+
 
     public Model() {
         this.observers = new ArrayList<>();
@@ -31,22 +34,38 @@ public class Model implements Serializable {
 
     // Initialize the queens on the board
     private void initializeQueens() {
-        // Example positions for queens
-        // Let's say the white queens are at A1, D4, and H8
-        whiteQueens = (1L << 0) | (1L << 27) | (1L << 60);
-        whiteQueenPositions[0] = 0;
-        whiteQueenPositions[1] = 27;
-        whiteQueenPositions[2] = 60;
 
+        putWhiteQueen(3);
+        putWhiteQueen(4);
+        putWhiteQueen(5);
 
-        // And the black queens are at B2, E5, and G7
-        blackQueens = (1L << 9) | (1L << 36) | (1L << 54);
-        blackQueenPositions[0] = 9;
-        blackQueenPositions[1] = 36;
-        blackQueenPositions[2] = 54;
+        putBlackQueen(59);
+        putBlackQueen(60);
+        putBlackQueen(61);
 
+//        setupWalls(new int[] {2,8,12,17,20,26,30,33,34,35,36,37,38,41,44,50,51,52,53,56,58});
 
     }
+
+    private void putWhiteQueen(int position){
+        if(whiteQueenArrayPosition >= 3) return;
+
+        whiteQueens |= (1L << position);
+        whiteQueenPositions[whiteQueenArrayPosition++] = (short) position;
+    }
+
+    private void putBlackQueen(int position){
+        if(blackQueenArrayPosition >= 3) return;
+        blackQueens |= (1L << position);
+        blackQueenPositions[blackQueenArrayPosition++] = (short) position;
+    }
+
+    private void setupWalls(int[] positions){
+        for(int pos : positions) {
+            walls |= (1L << pos);
+        }
+    }
+
 
     public boolean isWhiteQueen(int position){
         return (whiteQueens & (1L << position)) != 0;
@@ -71,23 +90,18 @@ public class Model implements Serializable {
 
     public boolean hasMoves(short[] positions){
         for(int queenPosition : positions) {
-            for (int i = -1; i <= 1; i++) {
-                for (int j = -1; j <= 1; j++) {
-                    if (i == 0 && j == 0) continue; // Skip the queen's own position
-
-                    if (isWalkable(queenPosition + i * BOARD_SIZE + j)) {
+            for(int pos : Constants.POSSIBLE_MOVEMENTS_OFFSETS)
+                    if (isWalkable(queenPosition + pos)) {
                         return true;
                     }
                 }
-            }
-        }
         return false;
     }
 
     public boolean isGameOver(){
         boolean hasMovesBlack = hasMoves(blackQueenPositions);
         boolean hasMovesWhite = hasMoves(whiteQueenPositions);
-        return !hasMovesBlack && !hasMovesWhite;
+        return !hasMovesBlack || !hasMovesWhite;
     }
 
     public int getCurrentPlayer() {
@@ -184,7 +198,7 @@ public class Model implements Serializable {
 
 
     public short[][] generatePossibleMoves(int playerColor) {
-        short[][] possibleMovesList = new short[27 * 3][2];
+        short[][] possibleMovesList = new short[26 * 3][2];
 
         short[] queensPositions = playerColor == Constants.WHITE ? whiteQueenPositions : blackQueenPositions;
         long occupancy = getOccupancy();
@@ -199,11 +213,11 @@ public class Model implements Serializable {
                 possibleMovesList[k++] = new short[]{(short)position, (short)to};
             }
         }
-        return possibleMovesList;
+        return Arrays.copyOf(possibleMovesList, k);
     }
 
     public short[] generatePossibleWalls(short lastMovedPosition) {
-        short[] possibleMovesList = new short[27];
+        short[] possibleMovesList = new short[28];
 
         long occupancy = getOccupancy();
 
@@ -217,10 +231,9 @@ public class Model implements Serializable {
             k++;
         }
 
-        possibleMovesList[k] = -1;
-
-
-        return possibleMovesList;
+//        System.out.println("moved="+lastMovedPosition);
+//        System.out.println(Arrays.toString(possibleMovesList));
+        return Arrays.copyOf(possibleMovesList, k);
     }
 
 
